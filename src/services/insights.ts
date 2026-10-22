@@ -4,10 +4,11 @@ import { HttpError } from "../utils/query.js";
 export type Insight = { title: string; detail: string; tone: "positive" | "neutral" | "attention" };
 type InsightResult = { insights: Insight[]; model: string; generatedAt: string };
 
-const FALLBACK_MODEL = "gemini-flash-lite-latest";
+const FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-lite-latest"];
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 const cache = new Map<string, { expires: number; value: InsightResult }>();
+let lastGood: InsightResult | undefined;
 
 const responseSchema = {
   type: "OBJECT",
@@ -63,8 +64,9 @@ async function callGemini(model: string, prompt: string): Promise<Insight[]> {
 
 /**
  * Generates dashboard insights from aggregate statistics only (no patient-level data leaves the API).
- * Results are cached per key to stay within free-tier rate limits, and a second model is tried when
- * the primary is overloaded or unavailable.
+ * Gemini latency varies a lot between models under load, so the configured model and the fallbacks
+ * are asked in parallel and the first valid answer wins. Results are cached per key to stay within
+ * free-tier rate limits; if every model fails, the last good answer is served instead of an error.
  */
 export async function generateInsights(cacheKey: string, summary: unknown): Promise<InsightResult> {
   if (!env.GEMINI_API_KEY) throw new HttpError(503, "AI insights are not configured.");
@@ -73,15 +75,19 @@ export async function generateInsights(cacheKey: string, summary: unknown): Prom
   if (cached && cached.expires > Date.now()) return cached.value;
 
   const prompt = buildPrompt(summary);
-  const models = [...new Set([env.GEMINI_MODEL, FALLBACK_MODEL])];
-  for (const model of models) {
-    try {
+  const models = [...new Set([env.GEMINI_MODEL, ...FALLBACK_MODELS])];
+  try {
+    return await Promise.any(models.map(async (model) => {
       const value = { insights: await callGemini(model, prompt), model, generatedAt: new Date().toISOString() };
       cache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, value });
+      lastGood = value;
       return value;
-    } catch (error) {
-      console.warn("AI insights attempt failed:", error instanceof Error ? error.message : error);
-    }
+    }));
+  } catch (error) {
+    const reasons = error instanceof AggregateError ? error.errors : [error];
+    for (const reason of reasons) console.warn("AI insights attempt failed:", reason instanceof Error ? reason.message : reason);
   }
+  if (cached) return cached.value;
+  if (lastGood) return lastGood;
   throw new HttpError(502, "AI insights are temporarily unavailable. Please try again shortly.");
 }
