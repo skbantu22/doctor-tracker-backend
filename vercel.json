@@ -1,0 +1,17 @@
+{
+  "services": {
+    "doctor-tracker-api": {
+      "root": ".",
+      "buildCommand": "npm ci --include=dev && npm run build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "doctor-tracker-api"
+      }
+    }
+  ]
+}
