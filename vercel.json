@@ -2,7 +2,8 @@
   "services": {
     "doctor-tracker-api": {
       "root": ".",
-      "buildCommand": "npm ci --include=dev && npm run build"
+      "buildCommand": "npm ci --include=dev && npm run build",
+      "entrypoint": "src/app.ts"
     }
   },
   "rewrites": [
