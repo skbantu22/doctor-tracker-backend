@@ -1,5 +1,7 @@
 # Doctor Tracker API
 
+**Live demo:** https://doctor-tracker-frontend-wheat.vercel.app · **API:** https://doctor-tracker-backend-one.vercel.app · **Code:** [frontend](https://github.com/skbantu22/doctor-tracker-frontend) · [backend](https://github.com/skbantu22/doctor-tracker-backend)
+
 This is the REST API for **Doctor Tracker**, a secure admin workspace for managing doctors and their patients and viewing clinic analytics. It is a standalone Express 5 service on MongoDB (Mongoose). It handles authentication, validation, indexed search, filtering and pagination, and the dashboard aggregations. The Next.js client lives in the frontend repository, whose README has the full architecture and the screenshots.
 
 ## Setup Guide
