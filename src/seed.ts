@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { connectDatabase } from "./db.js";
+import { ensureDatabase } from "./db.js";
 import { Doctor } from "./models/Doctor.js";
 import { Patient, patientStatuses } from "./models/Patient.js";
 
@@ -48,7 +48,7 @@ function daysAgo(maxDays: number) {
 }
 
 async function seed() {
-  await connectDatabase();
+  await ensureDatabase();
 
   const doctorDocs = [];
   for (const [index, [name, specialization, hospital]] of doctors.entries()) {

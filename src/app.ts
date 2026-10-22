@@ -5,6 +5,7 @@ import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import { env } from "./config/env.js";
+import { ensureDatabase } from "./db.js";
 import { requireAuth } from "./middleware/auth.js";
 import authRoutes from "./routes/auth.js";
 import dashboardRoutes from "./routes/dashboard.js";
@@ -33,6 +34,11 @@ app.use("/api/auth/login", rateLimit({
 }));
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+// Lazy connection so the same app runs as a long-lived server or as a Vercel serverless function.
+app.use(async (_req, _res, next) => {
+  await ensureDatabase();
+  next();
+});
 app.use("/api/auth", authRoutes);
 app.use("/api", requireAuth);
 app.use("/api/dashboard", dashboardRoutes);
@@ -56,3 +62,6 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   console.error(error);
   return res.status(500).json({ error: "Something went wrong. Please try again." });
 });
+
+// Vercel's Express runtime uses the default export as the request handler.
+export default app;
